@@ -104,17 +104,26 @@ void simpleHighway(pcl::visualization::PCLVisualizer::Ptr& viewer)
 // Stream PCD files
 void cityBlock(pcl::visualization::PCLVisualizer::Ptr& viewer, ProcessPointClouds<pcl::PointXYZI>* pointProcessorI, const pcl::PointCloud<pcl::PointXYZI>::Ptr& inputCloud)
 {
-    
-    // ProcessPointClouds<pcl::PointXYZI> *pcd_ptr = new ProcessPointClouds<pcl::PointXYZI>();
-    // pcl::PointCloud<pcl::PointXYZI>::Ptr inputCloud = pcd_ptr->loadPcd("../src/sensors/data/pcd/data_1/0000000000.pcd");
-    // // renderPointCloud(viewer,inputCloud,"InputCloud");
+
     pcl::PointCloud<pcl::PointXYZI>::Ptr filteredCloud = pointProcessorI->FilterCloud(inputCloud, 0.3, Eigen::Vector4f(-10, -6, -3, 1), Eigen::Vector4f(30, 6, 4, 1));
-    std::pair<pcl::PointCloud<pcl::PointXYZI>::Ptr, pcl::PointCloud<pcl::PointXYZI>::Ptr> segmentCloud = pointProcessorI->SegmentPlane(filteredCloud, 100, 0.2);
+    // std::pair<pcl::PointCloud<pcl::PointXYZI>::Ptr, pcl::PointCloud<pcl::PointXYZI>::Ptr> segmentCloud = pointProcessorI->SegmentPlane(filteredCloud, 100, 0.2);
+
+    // Use own RANSAC for project submition
+    std::pair<pcl::PointCloud<pcl::PointXYZI>::Ptr, pcl::PointCloud<pcl::PointXYZI>::Ptr> segmentCloud = pointProcessorI->Ransac_segmentPlane(filteredCloud, 100, 0.2);
     // renderPointCloud(viewer, filteredCloud, "Filtered Cloud");
     renderPointCloud(viewer, segmentCloud.first, "Obstacle Cloud",Color(1, 0, 0));
     renderPointCloud(viewer, segmentCloud.second, "Plane Cloud", Color(0, 1, 0));
 
-    std::vector<pcl::PointCloud<pcl::PointXYZI>::Ptr> cloudClusters = pointProcessorI->Clustering(segmentCloud.first, 0.5, 8, 300);
+    // Import data points to K-d tree;
+    KdTree* kdTree = new KdTree();
+
+    for(int index = 0 ; index < segmentCloud.first->points.size() ; ++index){
+        kdTree->insert(segmentCloud.first->points[index], index);
+    }
+
+    // std::vector<pcl::PointCloud<pcl::PointXYZI>::Ptr> cloudClusters = pointProcessorI->Clustering(segmentCloud.first, 0.5, 8, 300);
+    // Use own EuclideanClustring for Project submition
+    std::vector<pcl::PointCloud<pcl::PointXYZI>::Ptr> cloudClusters = pointProcessorI->euclideanClustering(segmentCloud.first, kdTree, 0.3, 8, 300);
 
     int clusterId = 0;
     std::vector<Color> colors = {Color(1,0,0), Color(1,1,0), Color(0,0,1)};
@@ -123,7 +132,7 @@ void cityBlock(pcl::visualization::PCLVisualizer::Ptr& viewer, ProcessPointCloud
     {
         std::cout << "cluster size ";
         pointProcessorI->numPoints(cluster);
-        renderPointCloud(viewer,cluster,"obstCloud"+std::to_string(clusterId),colors[clusterId % colors.size()]);
+        renderPointCloud(viewer,cluster,"obstCloud"+std::to_string(clusterId),colors[clusterId]);
 
         Box box = pointProcessorI->BoundingBox(cluster);
         renderBox(viewer,box,clusterId);
