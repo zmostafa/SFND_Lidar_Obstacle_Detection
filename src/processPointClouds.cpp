@@ -261,9 +261,9 @@ std::pair<typename pcl::PointCloud<PointT>::Ptr, typename pcl::PointCloud<PointT
 			float x4 = point.x;
 			float y4 = point.y;
 			float z4 = point.z;
-			float d = fabs(a*x4+b*y4+c*z4+d)/sqrt(a*a + b*b + c*c);
+			float dist = fabs(a*x4+b*y4+c*z4+d)/sqrt(a*a + b*b + c*c);
 
-			if(d <= distanceTol)
+			if(dist <= distanceTol)
 				inliers.insert(index);
 		}
 		if(inliers.size() > inliersResult.size()){
@@ -275,11 +275,11 @@ std::pair<typename pcl::PointCloud<PointT>::Ptr, typename pcl::PointCloud<PointT
     typename pcl::PointCloud<PointT>::Ptr planeCloud(new pcl::PointCloud<PointT>());
 
     for(int index = 0 ; index < cloud->points.size(); ++index){
-        auto point = cloud->points[index];
+        PointT point = cloud->points[index];
         if(inliersResult.count(index)){
-            obstacleCloud->points.push_back(point);
-        }else{
             planeCloud->points.push_back(point);
+        }else{
+            obstacleCloud->points.push_back(point);
         }
     }
 	auto endTime = std::chrono::steady_clock::now();
